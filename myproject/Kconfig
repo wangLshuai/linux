@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+menu "my project"
+
+config MYSYSCALL_PRINK
+    bool "add print"
+
+endmenu
+
+
