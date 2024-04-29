@@ -3,7 +3,8 @@ menu "my project"
 
 config MYSYSCALL_PRINK
     bool "add print"
-
+config MY_DRIVER
+    tristate "my driver"
 endmenu
 
 
