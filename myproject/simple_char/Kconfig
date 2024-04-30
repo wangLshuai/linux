@@ -1,0 +1,5 @@
+# SPDX_Licnese-Identifier: GPL-2.0
+
+config SIMPLE_CHAR
+    tristate "SIMPLE_CHAR"
+    

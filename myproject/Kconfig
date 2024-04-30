@@ -5,6 +5,8 @@ source "myproject/syscall/Kconfig"
 
 source "myproject/test/Kconfig"
 
+source "myproject/simple_char/Kconfig"
+
 endmenu
 
 
