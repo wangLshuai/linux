@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
-config MY_DRIVER
-    tristate "my driver"
+config TEST_DRIVER
+    tristate "test driver"
 
 
 

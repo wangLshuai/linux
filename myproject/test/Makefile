@@ -1,1 +1,1 @@
-obj-$(CONFIG_MY_DRIVER) += test.o
+obj-$(CONFIG_TEST_DRIVER) += test.o
