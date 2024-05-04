@@ -7,6 +7,8 @@ source "myproject/test/Kconfig"
 
 source "myproject/simple_char/Kconfig"
 
+source "myproject/mmap_devdrv/Kconfig"
+
 endmenu
 
 

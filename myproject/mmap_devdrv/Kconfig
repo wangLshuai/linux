@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config MMAP_DEV_DRIVER
+    tristate "mmap_devdrv driver"
+
+
+
