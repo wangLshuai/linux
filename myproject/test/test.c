@@ -6,15 +6,41 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/slab_def.h>
-static void *p;
-static void *vp0, *vp1;
-static struct page *a_page;
-static uintptr_t addr;
-static struct kmem_cache *slab;
+#include <linux/miscdevice.h>
+#include <linux/fs.h>
+
+#define DEV_NAME "test_dev"
+
 struct test_slab {
 	int i;
 	long j;
 };
+
+#define TEST_IOC_MEM _IO('C', 0x01)
+#define TEST_IOC_TASK _IO('C', 0x02)
+
+static int test_open(struct inode *inode, struct file *file)
+{
+	int minor = MINOR(inode->i_rdev);
+	int major = MAJOR(inode->i_rdev);
+	printk("open dev %d:%d\n", major, minor);
+	return 0;
+}
+static int test_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+static ssize_t test_read(struct file *file, char __user *buf, size_t count,
+			 loff_t *ppos)
+{
+	return 0;
+}
+
+static ssize_t test_write(struct file *file, const char __user *buf,
+			  size_t count, loff_t *ppos)
+{
+	return 0;
+}
 
 static void foreach_pages(void)
 {
@@ -70,14 +96,21 @@ static void foreach_pages(void)
 	printk("writeback:%lu\n", writeback);
 	printk("mappedtodisk:%lu\n", mappedtodisk);
 }
-static int __init test_init(void)
+
+static void test_memory(void)
 {
 	int i;
+	void *p;
+	void *vp0, *vp1;
+	struct page *a_page;
+	uintptr_t addr;
+	struct kmem_cache *slab;
 	printk("hello,test\n");
 	p = kmalloc(10, GFP_KERNEL);
 	printk("kmalloc p addr:     %016lx\n", (uintptr_t)p);
 	printk("__START_KERNEL_map: %016lx\addr\n", phys_base);
 	printk("phy addr of p:      %016lx\n", __pa(p));
+	kfree(p);
 
 	vp0 = vmalloc(PAGE_SIZE);
 	printk("vmalloc vp0 value:    %016lx\n", (uintptr_t)vp0);
@@ -103,11 +136,15 @@ static int __init test_init(void)
 
 	printk("%ld\n", abs((phy_page_addr0 >> PAGE_SHIFT) -
 			    (phy_page_addr1 >> PAGE_SHIFT)));
+
+	vfree(vp0);
+	vfree(vp1);
+
 	// BUG_ON(1);
 	uint64_t cr3 = cr3 = __read_cr3();
-	uint64_t *p = __va(cr3);
-	printk("%016lx\n", (uintptr_t)p);
-	printk("*p:%016llx\n", *p);
+	uint64_t *pgd = __va(cr3);
+	printk("%016lx\n", (uintptr_t)pgd);
+	printk("*pgd:%016llx\n", *pgd);
 	printk("CR3:    %016llx\n", cr3);
 	printk("%016lx\n", vp1_page->flags);
 	printk("vp1_page->_mapcount.counter: %d,vp1_page->_refcount.counter: %d\n",
@@ -120,6 +157,7 @@ static int __init test_init(void)
 		for (i = 0; i < PAGE_SIZE; i++)
 			l_addr[i] = 0x55;
 	}
+	__free_page(a_page);
 
 	uint64_t size;
 	char *buf;
@@ -139,6 +177,10 @@ static int __init test_init(void)
 		       addr);
 		*(char *)addr = 0xff;
 	}
+	if (addr)
+		printk("*addr: %x", *(char *)addr);
+	free_pages(addr, 10);
+
 	foreach_pages();
 	printk("-------------------------------------slab-------------------------------------\n");
 	int cpu_nums = num_online_cpus();
@@ -157,20 +199,53 @@ static int __init test_init(void)
 	       slab->size, slab->limit, slab->batchcount, slab->num,
 	       slab->align, slab->object_size);
 	kmem_cache_free(slab, test_s);
+	kmem_cache_destroy(slab);
+}
+
+static void test_task(void)
+{
+}
+long test_ioctl(struct file *file, unsigned int ioc, unsigned long args)
+{
+	printk("%s\n", __func__);
+	switch (ioc) {
+	case TEST_IOC_MEM:
+		printk("ioctl mem\n");
+		test_memory();
+		break;
+	case TEST_IOC_TASK:
+		printk("ioctl task\n");
+		test_task();
+		break;
+	}
+	return 0;
+}
+
+static struct file_operations fops = {
+	.open = test_open,
+	.release = test_release,
+	.read = test_read,
+	.write = test_write,
+	.unlocked_ioctl = test_ioctl,
+};
+static struct miscdevice misc = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = DEV_NAME,
+	.fops = &fops,
+};
+
+static int __init test_init(void)
+{
+	if (misc_register(&misc)) {
+		pr_err("misc register failed");
+	}
 
 	return 0;
 }
 
 static void __exit test_exit(void)
 {
-	kmem_cache_destroy(slab);
-	if (addr)
-		printk("*addr: %x", *(char *)addr);
-	free_pages(addr, 10);
-	__free_page(a_page);
-	vfree(vp0);
-	vfree(vp1);
-	kfree(p);
+	misc_deregister(&misc);
 	printk("%s exit\n", __func__);
 }
 
