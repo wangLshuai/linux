@@ -4,11 +4,15 @@
 #include <linux/mmzone.h>
 #include <linux/page_ref.h>
 #include <linux/mm.h>
-#include <linux/slab.h>
 #include <linux/slab_def.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
-
+#include <linux/sched/signal.h>
+#include <linux/nsproxy.h>
+#include <linux/utsname.h>
+#include <linux/pid_namespace.h>
+#include <linux/wait.h>
+#include <linux/kthread.h>
 #define DEV_NAME "test_dev"
 
 struct test_slab {
@@ -18,6 +22,24 @@ struct test_slab {
 
 #define TEST_IOC_MEM _IO('C', 0x01)
 #define TEST_IOC_TASK _IO('C', 0x02)
+#define TEST_IOC_KERNEL_THREAD _IO('C', 0x03)
+
+static bool running = false;
+int kernel_thread_fun(void *arg)
+{
+	printk("kernel thread start\n");
+	printk("kernel thread task->mm:%lx task->active_mm:%lx\n",
+	       (uintptr_t)current->mm, (uintptr_t)current->active_mm);
+	while (running) {
+		DECLARE_WAIT_QUEUE_HEAD(sleep);
+		wait_event_interruptible_timeout(sleep, 0,
+						 msecs_to_jiffies(1000));
+		printk("kernel thread running\n");
+	}
+
+	printk("kernel thread stop\n");
+	return 0;
+}
 
 static int test_open(struct inode *inode, struct file *file)
 {
@@ -204,6 +226,61 @@ static void test_memory(void)
 
 static void test_task(void)
 {
+	int i;
+	struct task_struct *t = current;
+	struct pid *pid;
+	struct pid_namespace *pidns;
+	printk("task->pid:%d,this global\n", t->pid);
+	printk("sizeof(pid):%lu\n", sizeof(struct pid));
+	pid = task_session(t);
+	printk("local ns task session id:%d\n", pid->numbers[pid->level].nr);
+	pid = task_pgrp(t);
+	printk("local ns task process group id:%d",
+	       pid->numbers[pid->level].nr);
+	printk("task nsproxy->pid_ns_for_children->level:%d",
+	       t->nsproxy->pid_ns_for_children->level);
+	int level = t->nsproxy->pid_ns_for_children->level;
+	for (i = 0; i <= level; i++) {
+		printk("this task pid :%d in pid namespace %d\n",
+		       t->thread_pid->numbers[i].nr, i);
+	}
+
+	pidns = t->nsproxy->pid_ns_for_children;
+	for (i = level; i >= 0; i--) {
+		printk("1 process:%s in %d namespace",
+		       find_task_by_pid_ns(1, pidns)->comm, i);
+		pidns = pidns->parent;
+	}
+
+	printk("task->comm:%s\n", t->comm);
+	printk("task->prio:%d\n", t->prio);
+	printk("task->static_prio:%d\n", t->static_prio);
+	printk("task->normal_prio:%d\n", t->normal_prio);
+	printk("task->rt_priority:%d\n", t->rt_priority);
+	printk("task->policy:%d\n", t->policy);
+	printk("task->cpus_allowed:%d\n", t->nr_cpus_allowed);
+	printk("task->state:%ld\n", t->state);
+	printk("task->flags:%x\n", t->flags);
+	printk("task->real_start_time:%llu\n", t->real_start_time);
+	printk("t->signal->rlim[RLIMIT_CORE].rlim_cur:%lu,t->signal->rlim[RLIMIT_CORE].rlim_max:%lu\n",
+	       t->signal->rlim[RLIMIT_CORE].rlim_cur,
+	       t->signal->rlim[RLIMIT_CORE].rlim_max); //ulimit -c 409600
+	printk("t->signal->rlim[RLIMIT_NOFILE].rlim_cur:%lu,t->signal->rlim[RLIMIT_NOFILE].rlim_max:%lu\n",
+	       t->signal->rlim[RLIMIT_NOFILE].rlim_cur,
+	       t->signal->rlim[RLIMIT_NOFILE].rlim_max); //ulimit -c 409600
+
+	printk("t->nsproxy->uts_ns->name. sysname:%s version:%s machine:%s\n",
+	       t->nsproxy->uts_ns->name.sysname,
+	       t->nsproxy->uts_ns->name.version,
+	       t->nsproxy->uts_ns->name.machine);
+	printk("sizeof(union thread_info):%lu,sizeof(struct task_struct):%lu,t->stack:%lx t:%lx\n",
+	       sizeof(union thread_union), sizeof(struct task_struct),
+	       (uintptr_t)t->stack, (uintptr_t)t);
+	printk("user->processes:%d\n",
+	       atomic_read(&t->real_cred->user->processes));
+	printk("user thread task->mm:%lx task->active_mm:%lx\n",
+	       (uintptr_t)current->mm, (uintptr_t)current->active_mm);
+	set_current_state(TASK_RUNNING);
 }
 long test_ioctl(struct file *file, unsigned int ioc, unsigned long args)
 {
@@ -216,6 +293,16 @@ long test_ioctl(struct file *file, unsigned int ioc, unsigned long args)
 	case TEST_IOC_TASK:
 		printk("ioctl task\n");
 		test_task();
+		break;
+	case TEST_IOC_KERNEL_THREAD:
+		if (args && !running) {
+			running = true;
+			kthread_run(kernel_thread_fun, 0, "test");
+			printk("new kernel thread\n");
+		}
+		if (!args) {
+			running = false;
+		}
 		break;
 	}
 	return 0;

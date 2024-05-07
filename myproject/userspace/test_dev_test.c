@@ -8,6 +8,7 @@
 
 #define TEST_IOC_MEM _IO('C', 0x01)
 #define TEST_IOC_TASK _IO('C', 0x02)
+#define TEST_IOC_KERNEL_THREAD _IO('C', 0x03)
 
 int main(int argc, char *argv[])
 {
@@ -27,9 +28,21 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 2:
+			printf("local pid namespace pid:%d\n",
+			       getpid()); // unshare -p -f --mount-proc
 			if (ioctl(fd, TEST_IOC_TASK, NULL) == -1) {
 				printf("ioctl failed:%s\n", strerror(errno));
 			}
+			break;
+		case 3:
+			printf("kernel thread run\n");
+			if (ioctl(fd, TEST_IOC_KERNEL_THREAD, 1) == -1)
+				printf("ioctl failed:%s\n", strerror(errno));
+			break;
+		case 4:
+			printf("kernel thread stop\n");
+			if (ioctl(fd, TEST_IOC_KERNEL_THREAD, 0) == -1)
+				printf("ioctl failed:%s\n", strerror(errno));
 			break;
 		default:
 			printf("invalid argument\n./userspace/test_dev_test 1\n");
