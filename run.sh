@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-parameter="-m 1024M -smp 2  -kernel build/arch/x86/boot/bzImage  -hda ./sda.raw -usb -device usb-kbd"
-
+parameter="-m 8024M -smp 16  -enable-kvm -kernel build/arch/x86/boot/bzImage  -hda ./sda.raw -usb -device usb-kbd"
+mkdir -p share
+sudo ip tuntap add dev tap0 mode tap
+sudo ip addr add 192.168.55.2/24 dev tap0
+sudo ip link set tap0 up
 for i in $@
 do
     case $i in
@@ -17,4 +20,4 @@ do
     esac        
 done
 
-qemu-system-x86_64 $parameter -append "console=tty0 console=ttyS0 loglevel=15 root=/dev/sda2 nokaslr" -fsdev local,id=fs0,security_model=passthrough,path=./share -device virtio-9p-pci,fsdev=fs0,mount_tag=myshare
+qemu-system-x86_64 $parameter -append "console=tty0 console=ttyS0 loglevel=15 root=/dev/sda2 nokaslr" -fsdev local,id=fs0,security_model=passthrough,path=./share -device virtio-9p-pci,fsdev=fs0,mount_tag=myshare -net nic,model=virtio -net tap,ifname=tap0,script=no,downscript=no
