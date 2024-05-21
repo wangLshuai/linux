@@ -257,6 +257,8 @@ static void test_task(void)
 	printk("task->static_prio:%d\n", t->static_prio);
 	printk("task->normal_prio:%d\n", t->normal_prio);
 	printk("task->rt_priority:%d\n", t->rt_priority);
+	printk("MAX_USER_RT_RPIO:%d MAX_RT_PRIO:%d,MAX_PRIO:%d", MAX_USER_PRIO,
+	       MAX_RT_PRIO, MAX_PRIO);
 	printk("task->policy:%d\n", t->policy);
 	printk("task->cpus_allowed:%d\n", t->nr_cpus_allowed);
 	printk("task->state:%ld\n", t->state);
@@ -281,6 +283,11 @@ static void test_task(void)
 	printk("user thread task->mm:%lx task->active_mm:%lx\n",
 	       (uintptr_t)current->mm, (uintptr_t)current->active_mm);
 	set_current_state(TASK_RUNNING);
+
+	printk("test_tsk_need_resched(t):%d\n", test_tsk_need_resched(t));
+	printk("sched entity exec_start:%llu sum_exec_runtime:%llu,vruntime:%llu\n",
+	       t->se.exec_start, t->se.sum_exec_runtime, t->se.vruntime);
+
 }
 long test_ioctl(struct file *file, unsigned int ioc, unsigned long args)
 {

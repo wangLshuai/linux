@@ -1,8 +1,10 @@
 #include <linux/wait.h>
 #include <linux/syscalls.h>
+#include "../../kernel/sched/sched.h"
 DECLARE_WAIT_QUEUE_HEAD(sleep);
 SYSCALL_DEFINE0(mysyscall)
 {
+	const struct sched_class *class;
 	printk("%s:current pid is:%d\n", __func__, current->pid);
 #ifdef CONFIG_MYSYSCALL_PRINK
 	printk("CONFIG_MYSYSCALL_PRINK\n");
@@ -10,7 +12,8 @@ SYSCALL_DEFINE0(mysyscall)
 	uint64_t cr3 = cr3 = __read_cr3();
 	printk("CR3:    %016llx\n", cr3);
 	struct zone *z;
-	int i = 0;
+	int i = 0, cpu;
+	struct rq *rq;
 	for_each_zone (z) {
 		i++;
 		printk("zone name:%s\n", z->name);
@@ -39,6 +42,38 @@ SYSCALL_DEFINE0(mysyscall)
 		i++;
 		vm = vm->vm_next;
 	}
-	wait_event_interruptible_timeout(sleep, 0, msecs_to_jiffies(5000));
+
+	printk("active_mm\n");
+	vm = t->active_mm->mmap;
+	i = 0;
+	while (vm) {
+		printk(" vm %d :vm->start:%016lx, vm->end:%016lx\n", i,
+		       vm->vm_start, vm->vm_end);
+		i++;
+		vm = vm->vm_next;
+	}
+
+	// ready queue percpu
+	cpu = smp_processor_id();
+
+	rq = cpu_rq(cpu);
+	printk("cpu id :%d,ready task number:%d cfs task number:%d\n", cpu,
+	       rq->nr_running, rq->cfs.nr_running);
+	printk("current task comman:%s\n", rq->curr->comm);
+
+	i = 0;
+	for_each_class(class)
+	{
+		i++;
+	}
+	printk("schedule class number:%d\n", i);
+	printk("se:%lx, %lx\n", (uintptr_t)rq->cfs.curr,
+	       (uintptr_t)(&current->se));
+	printk("cfs.load:%lu,task->se.load:%lu,NICE_0_LOAD:%ld\n",
+	       rq->cfs.load.weight, t->se.load.weight, NICE_0_LOAD);
+	printk("t->se.vruntime:%llu,t->se.sum_exec_runtime:%llu",
+	       t->se.vruntime, t->se.sum_exec_runtime);
+
+	// wait_event_interruptible_timeout(sleep, 0, msecs_to_jiffies(5000));
 	return current->pid;
 }
