@@ -1,0 +1,5 @@
+# SPDX_Licnese-Identifier: GPL-2.0
+
+config SYNC_LOCK
+    tristate "SYNC_LOCK"
+    

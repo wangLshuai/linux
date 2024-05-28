@@ -9,6 +9,8 @@ source "myproject/simple_char/Kconfig"
 
 source "myproject/mmap_devdrv/Kconfig"
 
+source "myproject/sync_lock/Kconfig
+
 endmenu
 
 
