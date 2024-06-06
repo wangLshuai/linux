@@ -1,0 +1,5 @@
+# SPDX_Licnese-Identifier: GPL-2.0
+
+config INTERRUPT_TEST
+    tristate "INTERRUPT_TEST"
+    
