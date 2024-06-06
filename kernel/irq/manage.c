@@ -1995,7 +1995,7 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	    (!(irqflags & IRQF_SHARED) && (irqflags & IRQF_COND_SUSPEND)) ||
 	    ((irqflags & IRQF_NO_SUSPEND) && (irqflags & IRQF_COND_SUSPEND)))
 		return -EINVAL;
-
+	mylog("request irq:%d\n",irq);
 	desc = irq_to_desc(irq);
 	if (!desc)
 		return -EINVAL;

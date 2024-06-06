@@ -1,6 +1,9 @@
 #include <linux/wait.h>
 #include <linux/syscalls.h>
+#include <linux/irq.h>
+#include <linux/irqdomain.h>
 #include "../../kernel/sched/sched.h"
+#include "../../arch/x86/include/asm/hw_irq.h"
 DECLARE_WAIT_QUEUE_HEAD(sleep);
 SYSCALL_DEFINE0(mysyscall)
 {
@@ -54,11 +57,11 @@ SYSCALL_DEFINE0(mysyscall)
 	}
 
 	// ready queue percpu
-	cpu = smp_processor_id();
-
-	rq = cpu_rq(cpu);
-	printk("cpu id :%d,ready task number:%d cfs task number:%d\n", cpu,
+	rq = this_rq();
+	cpu = get_cpu();
+	printk("cpu:%d ready task number:%d cfs task number:%d\n", cpu,
 	       rq->nr_running, rq->cfs.nr_running);
+	put_cpu();
 	printk("current task comman:%s\n", rq->curr->comm);
 
 	i = 0;
@@ -73,6 +76,30 @@ SYSCALL_DEFINE0(mysyscall)
 	       rq->cfs.load.weight, t->se.load.weight, NICE_0_LOAD);
 	printk("t->se.vruntime:%llu,t->se.sum_exec_runtime:%llu",
 	       t->se.vruntime, t->se.sum_exec_runtime);
+
+	int j, cpu_num;
+	struct irq_desc *desc;
+	// do_IRQ used vector_irq
+	cpu_num = num_online_cpus();
+	for (i = 0; i < cpu_num; i++) {
+		printk("--------------cpu:%d\n", i);
+		for (j = 0; j < NR_VECTORS; j++) {
+			desc = per_cpu(vector_irq, i)[j];
+			if (!IS_ERR_OR_NULL(desc)) {
+				printk("vector:%d", j);
+				if (desc->name != NULL)
+					printk("desc name:%s", desc->name);
+
+				if (desc->irq_data.domain != NULL) {
+					printk("irq_donain name:%s ",
+					       desc->irq_data.domain->name);
+				}
+				printk("irq:%u hwirq:%lu \n",
+				       desc->irq_data.irq,
+				       desc->irq_data.hwirq);
+			}
+		}
+	}
 
 	// wait_event_interruptible_timeout(sleep, 0, msecs_to_jiffies(5000));
 	return current->pid;

@@ -169,6 +169,7 @@ int vprintk(const char *fmt, va_list args);
 
 asmlinkage __printf(1, 2) __cold
 int printk(const char *fmt, ...);
+#define mylog(fmt,...) printk("mylog----------------in func %s() file:%s:%d " fmt,__func__,__FILE__,__LINE__,##__VA_ARGS__)
 
 /*
  * Special printk facility for scheduler/timekeeping use only, _DO_NOT_USE_ !

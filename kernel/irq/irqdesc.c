@@ -345,6 +345,11 @@ static RADIX_TREE(irq_desc_tree, GFP_KERNEL);
 
 static void irq_insert_desc(unsigned int irq, struct irq_desc *desc)
 {
+	mylog("irq %d\n",irq);
+	if(irq > 26 && irq < 30 )
+	{
+		printk("hwirq:%lu \n",desc->irq_data.hwirq);
+	}
 	radix_tree_insert(&irq_desc_tree, irq, desc);
 }
 
@@ -389,7 +394,7 @@ static struct irq_desc *alloc_desc(int irq, int node, unsigned int flags,
 				   struct module *owner)
 {
 	struct irq_desc *desc;
-
+	mylog("irq:%u\n", irq);
 	desc = kzalloc_node(sizeof(*desc), GFP_KERNEL, node);
 	if (!desc)
 		return NULL;

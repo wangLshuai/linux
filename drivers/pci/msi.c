@@ -69,6 +69,7 @@ int __weak arch_setup_msi_irq(struct pci_dev *dev, struct msi_desc *desc)
 		return -EINVAL;
 
 	err = chip->setup_irq(chip, dev, desc);
+
 	if (err < 0)
 		return err;
 
@@ -635,7 +636,7 @@ static int msi_capability_init(struct pci_dev *dev, int nvec,
 	/* All MSIs are unmasked by default; mask them all */
 	mask = msi_mask(entry->msi_attrib.multi_cap);
 	msi_mask_irq(entry, mask, mask);
-
+	
 	list_add_tail(&entry->list, dev_to_msi_list(&dev->dev));
 
 	/* Configure MSI capability structure */
@@ -1117,6 +1118,7 @@ static int __pci_enable_msix_range(struct pci_dev *dev,
 				   int maxvec, struct irq_affinity *affd,
 				   int flags)
 {
+	struct msi_desc *desc;
 	int rc, nvec = maxvec;
 
 	if (maxvec < minvec)
@@ -1133,6 +1135,10 @@ static int __pci_enable_msix_range(struct pci_dev *dev,
 		}
 
 		rc = __pci_enable_msix(dev, entries, nvec, affd, flags);
+		for_each_pci_msi_entry(desc, dev)
+		{
+			mylog("desc->irq:%u hwirq:%lu\n",desc->irq,irq_to_desc(desc->irq)->irq_data.hwirq);
+		}
 		if (rc == 0)
 			return nvec;
 
@@ -1164,6 +1170,7 @@ int pci_enable_msix_range(struct pci_dev *dev, struct msix_entry *entries,
 		int minvec, int maxvec)
 {
 	return __pci_enable_msix_range(dev, entries, minvec, maxvec, NULL, 0);
+	
 }
 EXPORT_SYMBOL(pci_enable_msix_range);
 
@@ -1290,6 +1297,7 @@ EXPORT_SYMBOL(pci_irq_vector);
  */
 const struct cpumask *pci_irq_get_affinity(struct pci_dev *dev, int nr)
 {
+	mylog("name:%s\n",dev->dev.init_name);
 	if (dev->msix_enabled) {
 		struct msi_desc *entry;
 		int i = 0;

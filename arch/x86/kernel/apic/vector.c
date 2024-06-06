@@ -170,6 +170,8 @@ setnew:
 	apicd->vector = newvec;
 	apicd->cpu = newcpu;
 	BUG_ON(!IS_ERR_OR_NULL(per_cpu(vector_irq, newcpu)[newvec]));
+	mylog("newcpu:%d newvec:%d desc->irq_data irq:%u hwirq:%lu\n",
+	newcpu,newvec,desc->irq_data.irq,desc->irq_data.hwirq);
 	per_cpu(vector_irq, newcpu)[newvec] = desc;
 }
 
@@ -756,7 +758,17 @@ void lapic_online(void)
 	 * cleared.
 	 */
 	for (vector = 0; vector < NR_VECTORS; vector++)
+	{
+		struct irq_desc * desc;
+		desc=__setup_vector_irq(vector);
+		if (desc == VECTOR_UNUSED)
+			mylog("vector:%d desc:NULL\n", vector);
+		else {
+			mylog("vector:%d irq:%u hwirq:%lu\n",
+			      vector, desc->irq_data.irq, desc->irq_data.hwirq);
+		}
 		this_cpu_write(vector_irq[vector], __setup_vector_irq(vector));
+	}
 }
 
 void lapic_offline(void)

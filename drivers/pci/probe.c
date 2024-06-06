@@ -1394,7 +1394,7 @@ EXPORT_SYMBOL(pci_scan_bridge);
 static void pci_read_irq(struct pci_dev *dev)
 {
 	unsigned char irq;
-
+	mylog("start");
 	/* VFs are not allowed to use INTx, so skip the config reads */
 	if (dev->is_virtfn) {
 		dev->pin = 0;
@@ -1407,6 +1407,7 @@ static void pci_read_irq(struct pci_dev *dev)
 	if (irq)
 		pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &irq);
 	dev->irq = irq;
+	mylog("pci dev irq:%u\n",dev->irq);
 }
 
 void set_pcie_port_type(struct pci_dev *pdev)

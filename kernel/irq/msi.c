@@ -425,11 +425,13 @@ int msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,
 				ops->msi_finish(&arg, ret);
 			return ret;
 		}
-
+		mylog("hwirq:%lu\n",irq_to_desc(virq)->irq_data.hwirq);
 		for (i = 0; i < desc->nvec_used; i++) {
 			irq_set_msi_desc_off(virq, i, desc);
 			irq_debugfs_copy_devname(virq + i, dev);
 		}
+		// irq_data = irq_domain_get_irq_data(domain, desc->irq);
+		// mylog("hwirq:%lu\n",irq_data->hwirq);
 	}
 
 	if (ops->msi_finish)
@@ -468,6 +470,7 @@ int msi_domain_alloc_irqs(struct irq_domain *domain, struct device *dev,
 		for_each_msi_entry(desc, dev) {
 			irq_data = irq_domain_get_irq_data(domain, desc->irq);
 			irqd_clr_activated(irq_data);
+			mylog("hwirq:%lu\n",irq_data->hwirq);
 		}
 	}
 	return 0;

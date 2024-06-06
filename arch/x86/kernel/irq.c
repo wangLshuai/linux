@@ -234,11 +234,13 @@ __visible unsigned int __irq_entry do_IRQ(struct pt_regs *regs)
 {
 	struct pt_regs *old_regs = set_irq_regs(regs);
 	struct irq_desc * desc;
+	int hardirq_count;
 	/* high bit used in ret_from_ code  */
 	unsigned vector = ~regs->orig_ax;
 
 	entering_irq();
-
+	hardirq_count = hardirq_count() >> HARDIRQ_SHIFT;
+	BUG_ON(hardirq_count > 1);
 	/* entering_irq() tells RCU that we're not quiescent.  Check it. */
 	RCU_LOCKDEP_WARN(!rcu_is_watching(), "IRQ failed to wake up RCU");
 

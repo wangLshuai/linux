@@ -255,7 +255,7 @@ asmlinkage __visible void __softirq_entry __do_softirq(void)
 	bool in_hardirq;
 	__u32 pending;
 	int softirq_bit;
-
+	int softirq_count;
 	/*
 	 * Mask out PF_MEMALLOC as the current task context is borrowed for the
 	 * softirq. A softirq handled, such as network RX, might set PF_MEMALLOC
@@ -267,6 +267,8 @@ asmlinkage __visible void __softirq_entry __do_softirq(void)
 	account_irq_enter_time(current);
 
 	__local_bh_disable_ip(_RET_IP_, SOFTIRQ_OFFSET);
+	softirq_count = softirq_count()>>SOFTIRQ_SHIFT;
+	BUG_ON(softirq_count != 1);
 	in_hardirq = lockdep_softirq_start();
 
 restart:
@@ -274,7 +276,7 @@ restart:
 	set_softirq_pending(0);
 
 	local_irq_enable();
-
+	BUG_ON(irqs_disabled());
 	h = softirq_vec;
 
 	while ((softirq_bit = ffs(pending))) {
@@ -289,7 +291,9 @@ restart:
 		kstat_incr_softirqs_this_cpu(vec_nr);
 
 		trace_softirq_entry(vec_nr);
+		
 		h->action(h);
+	
 		trace_softirq_exit(vec_nr);
 		if (unlikely(prev_count != preempt_count())) {
 			pr_err("huh, entered softirq %u %s %p with preempt_count %08x, exited with %08x?\n",

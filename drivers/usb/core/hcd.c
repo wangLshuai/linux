@@ -36,6 +36,8 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include <linux/usb/otg.h>
+#include <linux/irq.h>
+#include <linux/irqdesc.h>
 
 #include "usb.h"
 #include "phy.h"
@@ -2582,6 +2584,9 @@ static int usb_hcd_request_irqs(struct usb_hcd *hcd,
 
 		snprintf(hcd->irq_descr, sizeof(hcd->irq_descr), "%s:usb%d",
 				hcd->driver->description, hcd->self.busnum);
+		mylog("usb hub irqnum:%u irq_data:irq:%u,hwirq:%lu\n", irqnum,
+		      irq_to_desc(irqnum)->irq_data.irq,
+		      irq_to_desc(irqnum)->irq_data.hwirq);
 		retval = request_irq(irqnum, &usb_hcd_irq, irqflags,
 				hcd->irq_descr, hcd);
 		if (retval != 0) {
@@ -2636,7 +2641,7 @@ int usb_add_hcd(struct usb_hcd *hcd,
 {
 	int retval;
 	struct usb_device *rhdev;
-
+	mylog("start irq:%d\n",irqnum);
 	if (!hcd->skip_phy_initialization && usb_hcd_is_primary_hcd(hcd)) {
 		hcd->phy_roothub = usb_phy_roothub_alloc(hcd->self.sysdev);
 		if (IS_ERR(hcd->phy_roothub))

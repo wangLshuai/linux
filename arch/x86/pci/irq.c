@@ -924,6 +924,7 @@ static int pcibios_lookup_irq(struct pci_dev *dev, int assign)
 	   IRQ 9 even though it is actually wired to IRQ 11 */
 
 	if (broken_hp_bios_irq9 && pirq == 0x59 && dev->irq == 9) {
+		mylog("Work around broken HP Pavilion Notebooks which assign USB");
 		dev->irq = 11;
 		pci_write_config_byte(dev, PCI_INTERRUPT_LINE, 11);
 		r->set(pirq_router_dev, dev, pirq, 11);

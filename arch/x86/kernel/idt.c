@@ -304,6 +304,9 @@ void __init idt_setup_debugidt_traps(void)
 /**
  * idt_setup_apic_and_irq_gates - Setup APIC/SMP and normal interrupt gates
  */
+#pragma GCC push_options
+
+#pragma GCC optimize ("O0")
 void __init idt_setup_apic_and_irq_gates(void)
 {
 	int i = FIRST_EXTERNAL_VECTOR;
@@ -315,7 +318,7 @@ void __init idt_setup_apic_and_irq_gates(void)
 		entry = irq_entries_start + 8 * (i - FIRST_EXTERNAL_VECTOR);
 		set_intr_gate(i, entry);
 	}
-
+#pragma GCC pop_options
 #ifdef CONFIG_X86_LOCAL_APIC
 	for_each_clear_bit_from(i, system_vectors, NR_VECTORS) {
 		set_bit(i, system_vectors);
