@@ -13,6 +13,8 @@ source "myproject/sync_lock/Kconfig"
 
 source "myproject/interrupt_test/Kconfig"
 
+source "myproject/debug_test/Kconfig"
+
 endmenu
 
 

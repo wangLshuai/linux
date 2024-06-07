@@ -1,0 +1,5 @@
+# SPDX_Licnese-Identifier: GPL-2.0
+
+config DEBUG_TEST
+    tristate "DEBUG_TEST"
+    
