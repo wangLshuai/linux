@@ -16,9 +16,6 @@
 #include <linux/cache.h>
 #include "pci.h"
 
-#pragma GCC push_options
-
-#pragma GCC optimize ("O0")
 void pci_assign_irq(struct pci_dev *dev)
 {
 	u8 pin;
@@ -64,5 +61,3 @@ void pci_assign_irq(struct pci_dev *dev)
 	   the real IRQ to use; the device does not use it. */
 	pci_write_config_byte(dev, PCI_INTERRUPT_LINE, irq);
 }
-
-#pragma GCC pop_options
