@@ -434,6 +434,10 @@ void input_event(struct input_dev *dev,
 {
 	unsigned long flags;
 
+	// if(type == EV_REL)
+	// {
+	// 	printk("mouse");
+	// }
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 
 		spin_lock_irqsave(&dev->event_lock, flags);
