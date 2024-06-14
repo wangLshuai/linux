@@ -273,7 +273,7 @@ static void hid_irq_in(struct urb *urb)
 	struct hid_device	*hid = urb->context;
 	struct usbhid_device	*usbhid = hid->driver_data;
 	int			status;
-
+	BUG_ON(!in_irq());
 	switch (urb->status) {
 	case 0:			/* success */
 		usbhid->retry_delay = 0;
@@ -281,6 +281,9 @@ static void hid_irq_in(struct urb *urb)
 			break;
 		usbhid_mark_busy(usbhid);
 		if (!test_bit(HID_RESUME_RUNNING, &usbhid->iofl)) {
+			mylog("hid raw data\n");
+			print_hex_dump(KERN_INFO, "report raw", DUMP_PREFIX_NONE, 16, 1,
+		       urb->transfer_buffer, urb->actual_length, true);
 			hid_input_report(urb->context, HID_INPUT_REPORT,
 					 urb->transfer_buffer,
 					 urb->actual_length, 1);
@@ -1034,6 +1037,8 @@ static int usbhid_parse(struct hid_device *hid)
 		goto err;
 	}
 
+	print_hex_dump(KERN_INFO, "hid report descriptor", DUMP_PREFIX_NONE, 2, 1,
+		       rdesc, rsize, true);
 	ret = hid_parse_report(hid, rdesc, rsize);
 	kfree(rdesc);
 	if (ret) {
@@ -1121,6 +1126,7 @@ static int usbhid_start(struct hid_device *hid)
 			if (!(usbhid->urbin = usb_alloc_urb(0, GFP_KERNEL)))
 				goto fail;
 			pipe = usb_rcvintpipe(dev, endpoint->bEndpointAddress);
+			mylog("interval:%d\n",interval);
 			usb_fill_int_urb(usbhid->urbin, dev, pipe, usbhid->inbuf, insize,
 					 hid_irq_in, hid, interval);
 			usbhid->urbin->transfer_dma = usbhid->inbuf_dma;

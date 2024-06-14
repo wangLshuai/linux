@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-parameter="-m 8024M -smp 2  -kernel build/arch/x86/boot/bzImage -device nec-usb-xhci,id=xhci -hda ./sda.raw -device usb-kbd "
+
+
+# device_dev mouse in qemu_monitor
+# info usb
+# device_add usb-mouse,id=mouse in qemu_monitor
+parameter="-m 8024M -smp 2  -kernel build/arch/x86/boot/bzImage -device nec-usb-xhci,id=xhci -hda ./sda.raw -device usb-mouse,id=mouse -monitor stdio"
 mkdir -p share
 sudo ip tuntap add dev tap0 mode tap
 sudo ip addr add 192.168.55.2/24 dev tap0

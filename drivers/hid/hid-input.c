@@ -1247,12 +1247,12 @@ static void hidinput_handle_scroll(struct hid_usage *usage,
 	lo_res = usage->wheel_accumulated/120;
 	if (lo_res)
 		usage->wheel_accumulated -= lo_res * 120;
-
+	mylog("mouse %d %d",lo_res,hi_res);
 	input_event(input, EV_REL, code, lo_res);
 	input_event(input, EV_REL, usage->code, hi_res);
 }
 
-void hidinput_hid_event(struct hid_device *hid, struct hid_field *field, struct hid_usage *usage, __s32 value)
+void hidinput_hid_event(struct hid_device *hid, struct hid_field *field, const struct hid_usage *usage, __s32 value)
 {
 	struct input_dev *input;
 	unsigned *quirks = &hid->quirks;
@@ -1380,7 +1380,7 @@ void hidinput_hid_event(struct hid_device *hid, struct hid_field *field, struct 
 	if (usage->type == EV_KEY &&
 	    (!test_bit(usage->code, input->key)) == value)
 		input_event(input, EV_MSC, MSC_SCAN, usage->hid);
-
+	mylog("mosue %d %d",usage->code,value);
 	input_event(input, usage->type, usage->code, value);
 
 	if ((field->flags & HID_MAIN_ITEM_RELATIVE) &&

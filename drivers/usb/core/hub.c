@@ -620,7 +620,7 @@ static void hub_resubmit_irq_urb(struct usb_hub *hub)
 		spin_unlock_irqrestore(&hub->irq_urb_lock, flags);
 		return;
 	}
-
+	mylog("submit_urb GFP_ATOMIC");
 	status = usb_submit_urb(hub->urb, GFP_ATOMIC);
 	if (status && status != -ENODEV && status != -EPERM &&
 	    status != -ESHUTDOWN) {
@@ -710,7 +710,6 @@ static void hub_irq(struct urb *urb)
 	int status = urb->status;
 	unsigned i;
 	unsigned long bits;
-
 	switch (status) {
 	case -ENOENT:		/* synchronous unlink */
 	case -ECONNRESET:	/* async unlink */
@@ -727,6 +726,8 @@ static void hub_irq(struct urb *urb)
 
 	/* let hub_wq handle things */
 	case 0:			/* we got data:  port status changed */
+		mylog("in_softirq:%ld,in_irq():%ld\n",in_softirq(),in_irq());
+		dump_stack();
 		bits = 0;
 		for (i = 0; i < urb->actual_length; ++i)
 			bits |= ((unsigned long) ((*hub->buffer)[i]))
@@ -1626,7 +1627,7 @@ static int hub_configure(struct usb_hub *hub,
 		ret = -ENOMEM;
 		goto fail;
 	}
-
+	mylog("interval:%d\n",endpoint->bInterval);
 	usb_fill_int_urb(hub->urb, hdev, pipe, *hub->buffer, maxp, hub_irq,
 		hub, endpoint->bInterval);
 
@@ -4442,7 +4443,10 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 	if (udev->state != USB_STATE_DEFAULT)
 		return -EINVAL;
 	if (hcd->driver->address_device)
+	{
 		retval = hcd->driver->address_device(hcd, udev);
+		mylog("udev->devaddr:%d\n",udev->devaddr);
+	}
 	else
 		retval = usb_control_msg(udev, usb_sndaddr0pipe(),
 				USB_REQ_SET_ADDRESS, 0, devnum, 0,
