@@ -11,3 +11,5 @@ obj-$(CONFIG_SYNC_LOCK) += sync_lock/
 obj-$(CONFIG_INTERRUPT_TEST) += interrupt_test/
 
 obj-$(CONFIG_DEBUG_TEST) += debug_test/
+
+obj-$(CONFIG_MYUSB_HID) += myusb_hid/

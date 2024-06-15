@@ -15,6 +15,8 @@ source "myproject/interrupt_test/Kconfig"
 
 source "myproject/debug_test/Kconfig"
 
+source "myproject/myusb_hid/Kconfig"
+
 endmenu
 
 
