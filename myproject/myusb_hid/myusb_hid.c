@@ -8,6 +8,13 @@
 	printk("mylog----------------in func %s() file:%s:%d " fmt, __func__,  \
 	       __FILE__, __LINE__, ##__VA_ARGS__)
 #endif
+
+struct myusb_hid_device {
+	struct urb *urb;
+	char *inbuf;
+};
+
+static struct myusb_hid_device myusb_hid_dev;
 bool find_hid_desc(char *buf, int len,
 		   struct usb_descriptor_header **desc_head_pp)
 {
@@ -84,10 +91,35 @@ void show_report_descriptor(struct usb_interface *intf)
 		}
 	}
 }
+
+static void myusb_hid_irq(struct urb *urb)
+{
+	int status;
+	status = urb->status;
+	switch (status) {
+	case 0: // success
+		print_hex_dump(KERN_INFO, "report raw", DUMP_PREFIX_NONE, 16, 1,
+			       urb->transfer_buffer, urb->actual_length, true);
+		break;
+	case -EPIPE:
+	case -ESHUTDOWN:
+	case -ECONNRESET:
+	case -ENOENT:
+		return;
+	default:
+		printk("status:%d\n", status);
+		return;
+	}
+
+	usb_submit_urb(myusb_hid_dev.urb, GFP_ATOMIC);
+}
+
 static int myusb_hid_probe(struct usb_interface *intf,
 			   const struct usb_device_id *id)
 {
 	struct usb_device *usb_d;
+	struct usb_endpoint_descriptor *endpoint;
+	int num, i;
 	char buf[128];
 	mylog("match hid interface\n");
 
@@ -101,12 +133,38 @@ static int myusb_hid_probe(struct usb_interface *intf,
 
 	show_report_descriptor(intf);
 
+	num = intf->cur_altsetting->desc.bNumEndpoints;
+	for (i = 0; i < num; i++) {
+		endpoint = &intf->cur_altsetting->endpoint[i].desc;
+
+		if (!usb_endpoint_xfer_int(endpoint) ||
+		    !usb_endpoint_dir_in(endpoint))
+			continue;
+		myusb_hid_dev.urb = usb_alloc_urb(0, GFP_KERNEL);
+		myusb_hid_dev.inbuf = usb_alloc_coherent(
+			usb_d, 4, GFP_KERNEL, &myusb_hid_dev.urb->transfer_dma);
+
+		usb_fill_int_urb(myusb_hid_dev.urb, usb_d,
+				 usb_rcvintpipe(usb_d,
+						endpoint->bEndpointAddress),
+				 myusb_hid_dev.inbuf, HID_MAX_BUFFER_SIZE,
+				 myusb_hid_irq, &myusb_hid_dev, 7);
+
+		usb_submit_urb(myusb_hid_dev.urb, GFP_ATOMIC);
+	}
 	return 0;
 }
 
 static void myusb_hid_disconnect(struct usb_interface *intf)
 {
-	mylog("called when remove module\n");
+	dump_stack();
+
+	usb_kill_urb(myusb_hid_dev.urb);
+	usb_free_coherent(interface_to_usbdev(intf), HID_MAX_BUFFER_SIZE,
+			  myusb_hid_dev.inbuf, myusb_hid_dev.urb->transfer_dma);
+
+	usb_free_urb(myusb_hid_dev.urb);
+	mylog("called when remove module or usb\n");
 }
 
 // match interface class is HID
