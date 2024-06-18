@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
-
-# device_dev mouse in qemu_monitor
+# exec cmd in qemu_monitor,list usb ,del usb device or add usb device
 # info usb
-# device_add usb-mouse,id=mouse in qemu_monitor
-parameter="-m 8024M -smp 2  -kernel build/arch/x86/boot/bzImage -device nec-usb-xhci,id=xhci -hda ./sda.raw -device usb-mouse,id=mouse -monitor stdio"
+# device_del mouse
+# device_del kbd
+# device_add usb-mouse,id=mouse
+# device_add usb-kbd,id=kbd
+
+# ssh root@192.168.55.200 login guest os
+parameter="-m 8024M -smp 2  -kernel build/arch/x86/boot/bzImage -device nec-usb-xhci,id=xhci -hda ./sda.raw -device usb-mouse,id=mouse -device usb-kbd,id=kbd -monitor stdio"
 mkdir -p share
 sudo ip tuntap add dev tap0 mode tap
 sudo ip addr add 192.168.55.2/24 dev tap0

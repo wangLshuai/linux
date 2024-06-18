@@ -10,11 +10,11 @@
 #endif
 
 struct myusb_hid_device {
-	struct urb *urb;
+	struct urb *urbin;
 	char *inbuf;
 };
 
-static struct myusb_hid_device myusb_hid_dev;
+// static struct myusb_hid_device myusb_hid_dev;
 bool find_hid_desc(char *buf, int len,
 		   struct usb_descriptor_header **desc_head_pp)
 {
@@ -96,6 +96,9 @@ static void myusb_hid_irq(struct urb *urb)
 {
 	int status;
 	status = urb->status;
+	if (!in_irq()) {
+		printk("is in_softirq?:%ld status:%d\n", in_softirq(), status);
+	}
 	switch (status) {
 	case 0: // success
 		print_hex_dump(KERN_INFO, "report raw", DUMP_PREFIX_NONE, 16, 1,
@@ -111,7 +114,7 @@ static void myusb_hid_irq(struct urb *urb)
 		return;
 	}
 
-	usb_submit_urb(myusb_hid_dev.urb, GFP_ATOMIC);
+	usb_submit_urb(urb, GFP_ATOMIC);
 }
 
 static int myusb_hid_probe(struct usb_interface *intf,
@@ -119,6 +122,7 @@ static int myusb_hid_probe(struct usb_interface *intf,
 {
 	struct usb_device *usb_d;
 	struct usb_endpoint_descriptor *endpoint;
+	struct myusb_hid_device *myusb_hid_dev;
 	int num, i;
 	char buf[128];
 	mylog("match hid interface\n");
@@ -133,6 +137,12 @@ static int myusb_hid_probe(struct usb_interface *intf,
 
 	show_report_descriptor(intf);
 
+	myusb_hid_dev = kzalloc(sizeof(struct myusb_hid_device), GFP_KERNEL);
+	if (myusb_hid_dev == NULL) {
+		printk("malloc failed\n");
+		return -1;
+	}
+	usb_set_intfdata(intf, myusb_hid_dev);
 	num = intf->cur_altsetting->desc.bNumEndpoints;
 	for (i = 0; i < num; i++) {
 		endpoint = &intf->cur_altsetting->endpoint[i].desc;
@@ -140,30 +150,46 @@ static int myusb_hid_probe(struct usb_interface *intf,
 		if (!usb_endpoint_xfer_int(endpoint) ||
 		    !usb_endpoint_dir_in(endpoint))
 			continue;
-		myusb_hid_dev.urb = usb_alloc_urb(0, GFP_KERNEL);
-		myusb_hid_dev.inbuf = usb_alloc_coherent(
-			usb_d, 4, GFP_KERNEL, &myusb_hid_dev.urb->transfer_dma);
 
-		usb_fill_int_urb(myusb_hid_dev.urb, usb_d,
+		myusb_hid_dev->urbin = usb_alloc_urb(0, GFP_KERNEL);
+		if (myusb_hid_dev->urbin == NULL)
+			goto failed;
+
+		myusb_hid_dev->inbuf =
+			usb_alloc_coherent(usb_d, HID_MAX_BUFFER_SIZE,
+					   GFP_KERNEL,
+					   &myusb_hid_dev->urbin->transfer_dma);
+		if (myusb_hid_dev->inbuf == NULL) {
+			usb_free_urb(myusb_hid_dev->urbin);
+			goto failed;
+		}
+		usb_fill_int_urb(myusb_hid_dev->urbin, usb_d,
 				 usb_rcvintpipe(usb_d,
 						endpoint->bEndpointAddress),
-				 myusb_hid_dev.inbuf, HID_MAX_BUFFER_SIZE,
-				 myusb_hid_irq, &myusb_hid_dev, 7);
-
-		usb_submit_urb(myusb_hid_dev.urb, GFP_ATOMIC);
+				 myusb_hid_dev->inbuf, HID_MAX_BUFFER_SIZE,
+				 myusb_hid_irq, myusb_hid_dev, 7);
+		myusb_hid_dev->urbin->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
+		usb_submit_urb(myusb_hid_dev->urbin, GFP_ATOMIC);
 	}
 	return 0;
+
+failed:
+	kfree(myusb_hid_dev);
+	return -1;
 }
 
 static void myusb_hid_disconnect(struct usb_interface *intf)
 {
 	dump_stack();
+	struct myusb_hid_device *myusb_hid_dev = usb_get_intfdata(intf);
+	if (myusb_hid_dev->urbin)
+		usb_kill_urb(myusb_hid_dev->urbin);
+	if (myusb_hid_dev->inbuf)
+		usb_free_coherent(interface_to_usbdev(intf),
+				  HID_MAX_BUFFER_SIZE, myusb_hid_dev->inbuf,
+				  myusb_hid_dev->urbin->transfer_dma);
 
-	usb_kill_urb(myusb_hid_dev.urb);
-	usb_free_coherent(interface_to_usbdev(intf), HID_MAX_BUFFER_SIZE,
-			  myusb_hid_dev.inbuf, myusb_hid_dev.urb->transfer_dma);
-
-	usb_free_urb(myusb_hid_dev.urb);
+	usb_free_urb(myusb_hid_dev->urbin);
 	mylog("called when remove module or usb\n");
 }
 
