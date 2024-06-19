@@ -1,8 +1,10 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/hid.h>
+#include <linux/proc_fs.h>
 
-struct hid_device *my_hid;
+static struct hid_device *my_hid;
+static struct proc_dir_entry *hid_proc;
 /*
 0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
 0x09, 0x06,        // Usage (Keyboard)
@@ -47,7 +49,11 @@ static char keyboard_report_descriptor[] = {
 	0x91, 0x01, 0x95, 0x06, 0x75, 0x08, 0x15, 0x00, 0x25, 0xff, 0x05,
 	0x07, 0x19, 0x00, 0x29, 0xff, 0x81, 0x00, 0xc0
 };
-
+// KEY_A  00 00 04 00 00 00 00 00
+// KEY_Z  00 00 1d 00 00 00 00 00
+// KEY_LEFTSHIFT 02 00 00 00 00 00 00 00
+// release 00 00 00 00 00 00 00 00
+static char report[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 // Force Feedback device init
 static int my_hid_ff_init(struct hid_device *hdev)
 {
@@ -57,17 +63,17 @@ static int my_hid_ff_init(struct hid_device *hdev)
 
 static int my_hid_start(struct hid_device *hdev)
 {
-	printk("%s called when add hid\n",__func__);
+	printk("%s called when add hid\n", __func__);
 	return 0;
 }
 static void my_hid_stop(struct hid_device *hdev)
 {
-	printk("%s called when destory hid\n",__func__);
+	printk("%s called when destory hid\n", __func__);
 }
 
 static int my_hid_open(struct hid_device *hdev)
 {
-	printk("called when open inpput event device file\n");
+	printk("called when open input event device file\n");
 	return 0;
 }
 static void my_hid_close(struct hid_device *hdev)
@@ -99,7 +105,7 @@ static int my_hid_raw_request(struct hid_device *hdev, unsigned char reportnum,
 	BUG_ON(1);
 	return 0;
 }
-struct hid_ll_driver my_hid_ll_driver = {
+static struct hid_ll_driver my_hid_ll_driver = {
 	.start = my_hid_start,
 	.stop = my_hid_stop,
 	.parse = my_hid_parse,
@@ -107,8 +113,44 @@ struct hid_ll_driver my_hid_ll_driver = {
 	.close = my_hid_close,
 	.raw_request = my_hid_raw_request,
 };
+
+static ssize_t hid_test_read(struct file *file, char __user *buf, size_t count,
+			     loff_t *pos)
+{
+	char *s = "please input a-z or A-Z\n";
+	return simple_read_from_buffer(buf, count, pos, s, strlen(s));
+}
+
+static ssize_t hid_test_write(struct file *file, const char __user *buf,
+			      size_t count, loff_t *pos)
+{
+	ssize_t ret;
+	int i;
+	char key_buf[64] = { 0 };
+	ret = simple_write_to_buffer(key_buf, sizeof(key_buf), pos, buf, count);
+
+	for (i = 0; i < ret; i++) {
+		if (key_buf[i] >= 'A' && key_buf[i] <= 'Z') {
+			report[3] = key_buf[i] - 'A' + 0x04;
+			report[0] = 0x02;
+		}
+		if (key_buf[i] >= 'a' && key_buf[i] <= 'z') {
+			report[3] = key_buf[i] - 'a' + 0x04;
+		}
+		hid_input_report(my_hid, HID_INPUT_REPORT, report,
+				 sizeof(report), 0);
+		report[0] = 0x00;
+	}
+	report[3] = 0x00;
+	hid_input_report(my_hid, HID_INPUT_REPORT, report, sizeof(report), 0);
+	*pos = 0;
+	return ret;
+}
+static struct file_operations fops = { .read = hid_test_read,
+				       .write = hid_test_write };
 static int __init hid_test_init(void)
 {
+	int ret;
 	printk("hid_test init \n");
 	my_hid = hid_allocate_device();
 	if (IS_ERR(my_hid)) {
@@ -120,14 +162,23 @@ static int __init hid_test_init(void)
 	my_hid->ff_init = my_hid_ff_init;
 	my_hid->ll_driver = &my_hid_ll_driver;
 	strcpy(my_hid->phys, "virtual/input0");
-	hid_add_device(my_hid);
+	ret = hid_add_device(my_hid);
+	if (ret) {
+		hid_destroy_device(my_hid);
+		return ret;
+	}
 
+	hid_proc = proc_create("hid_test", 0, NULL, &fops);
+	if (IS_ERR(hid_proc)) {
+		return PTR_ERR(hid_proc);
+	}
 	return 0;
 }
 
 static void __exit hid_test_exit(void)
 {
 	hid_destroy_device(my_hid);
+	proc_remove(hid_proc);
 	printk("hid_test_exit\n");
 }
 
