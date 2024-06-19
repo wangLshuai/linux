@@ -1,0 +1,5 @@
+# SPDX_Licnese-Identifier: GPL-2.0
+
+config HID_TEST
+    tristate "HID_TEST"
+    

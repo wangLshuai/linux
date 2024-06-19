@@ -13,3 +13,5 @@ obj-$(CONFIG_INTERRUPT_TEST) += interrupt_test/
 obj-$(CONFIG_DEBUG_TEST) += debug_test/
 
 obj-$(CONFIG_MYUSB_HID) += myusb_hid/
+
+obj-$(CONFIG_HID_TEST) += hid_test/

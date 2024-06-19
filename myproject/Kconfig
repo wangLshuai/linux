@@ -17,6 +17,8 @@ source "myproject/debug_test/Kconfig"
 
 source "myproject/myusb_hid/Kconfig"
 
+source "myproject/hid_test/Kconfig"
+
 endmenu
 
 
