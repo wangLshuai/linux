@@ -11,3 +11,7 @@ obj-$(CONFIG_SYNC_LOCK) += sync_lock/
 obj-$(CONFIG_INTERRUPT_TEST) += interrupt_test/
 
 obj-$(CONFIG_DEBUG_TEST) += debug_test/
+
+obj-$(CONFIG_CLASS_TEST) += class_test/
+
+obj-$(CONFIG_FWNODE_TEST) += fwnode_test/
